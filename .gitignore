@@ -25,9 +25,13 @@
 
 #Unrelated
 filenameparser.py
+rotate_and_save.py
+transformed_*.off
 
 #Directories
 /Modules/*
+/ModelNet40
+/Models
 */Models
 */ModelSet
 */BigModelSet

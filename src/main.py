@@ -109,10 +109,10 @@ class StaticLoad(ClosestObjectSearch):
             self.fixed_model_name = self.comm.recv(source=0, tag=1)
             models = self.comm.recv(source=0, tag=0)
 
-        fixed_model = load_model_by_name(self.models_dir, self.fixed_model_name, self.comm)
+        fixed_model, fixed_model_mesh = load_model_by_name(self.models_dir, self.fixed_model_name, self.comm)
         
         for model in models:
-            calculate_distance(self.results_dict, self.models_dir, fixed_model, model, self.comm)
+            calculate_distance(self.results_dict, self.models_dir, fixed_model, model, self.comm, fixed_model_mesh)
 
         if self.world_size > 1:
             res = self.comm.gather(self.results_dict, root=0)

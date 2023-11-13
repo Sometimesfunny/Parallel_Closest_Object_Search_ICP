@@ -2,6 +2,7 @@ import os
 from utils.hausdorff import *
 from config import *
 import trimesh
+from icp_cuda import ICP_Cuda
 
 def load_model_by_name(models_dir, model_name, comm):
     try:
@@ -22,10 +23,26 @@ def load_model_by_name(models_dir, model_name, comm):
     finally:
         if LOAD_OUTPUT:
             print_flushed(f"{model.vertices.shape[0]} vertices is found and loaded by process {comm.Get_rank()}!")
-        return np.array(model.vertices)
+        return np.array(model.vertices), model
+    
+counter = 0
+    
+def align_model(model, target_model, model_mesh):
+    global counter
+    icp_cuda = ICP_Cuda(model, target_model)
+    icp_cuda.icp(threads_per_block=256, verbose=False)
+    transformed_model = icp_cuda.transform()
+    model_mesh.vertices = transformed_model
+    model_mesh.export(f"transformed_{counter}.off")
+    counter += 1
+    return transformed_model
 
-def calculate_distance(results_dict, models_dir, fixed_model, model_name, comm):
-    model = load_model_by_name(models_dir, model_name, comm)
+def calculate_distance(results_dict, models_dir, fixed_model, model_name, comm, fixed_model_mesh):
+    global counter
+    print(model_name)
+    print(counter)
+    model, model_mesh = load_model_by_name(models_dir, model_name, comm)
+    model = align_model(fixed_model, model, fixed_model_mesh)
     if METHOD == 'SCIPY_DH':
         results_dict[model_name], _, _ = max(directed_hausdorff(fixed_model, model),directed_hausdorff(model, fixed_model))
     elif METHOD == 'EB':
@@ -36,6 +53,7 @@ def calculate_distance(results_dict, models_dir, fixed_model, model_name, comm):
         results_dict[model_name] = max(naivehdd(fixed_model, model),naivehdd(model, fixed_model))
     elif METHOD == 'KDTREE':
         results_dict[model_name] = max(kdtree_query(fixed_model, model),kdtree_query(model, fixed_model))
+    print(results_dict[model_name])
 
 def print_opening(world_size, models_count, fixed_model_name, alg):
     print_flushed("==================================")
