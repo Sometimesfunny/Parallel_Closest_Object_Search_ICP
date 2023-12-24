@@ -22,11 +22,12 @@
 *.gz
 *.css
 *.png
+*.off
+*.json
 
 #Unrelated
 filenameparser.py
 rotate_and_save.py
-transformed_*.off
 
 #Directories
 /Modules/*

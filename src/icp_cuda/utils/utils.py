@@ -27,14 +27,14 @@ def beautiful_print_progress(iteration: int, mean_error: float, prev_error: floa
         print(f' iteration_n | {"mean_error":^20} | {"difference":^20} ')
     print(f' {iteration:^11} | {mean_error:^20} | {(mean_error - prev_error):^20}')
 
-def rotate_3d_data(data):
+def rotate_3d_data(data, x = None, y = None, z = None):
     # fig = plt.figure(figsize=(5, 5), dpi=100)
     # ax = fig.add_subplot(111, projection='3d')
 
     # Generate random angles for the x, y, and z axes
-    theta_x = np.random.uniform(0, 360)
-    theta_y = np.random.uniform(0, 360)
-    theta_z = np.random.uniform(0, 360)
+    theta_x = np.random.uniform(0, 360) if x is None else x
+    theta_y = np.random.uniform(0, 360) if y is None else y
+    theta_z = np.random.uniform(0, 360) if z is None else z
 
     print('Rotate x by', theta_x, 'degrees')
     print('Rotate y by', theta_y, 'degrees')

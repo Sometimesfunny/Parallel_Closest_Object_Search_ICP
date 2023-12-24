@@ -2,28 +2,26 @@ import os
 from utils.hausdorff import *
 from config import *
 import trimesh
+from pathlib import Path
 from icp_cuda import ICP_Cuda
+from icp_cuda.utils import rotate_3d_data
 
 def load_model_by_name(models_dir, model_name, comm):
+    models_path = Path(models_dir)
+    models = list(map(str, (list(models_path.glob("**/*.off")) + list(models_path.glob("**/*.stl")))))
+    filtered = list(filter(lambda x: model_name in x, models))[-1]
+    filtered_path = Path(filtered)
     try:
-        if os.path.exists(f"{models_dir}/{model_name}.stl"):
-            if LOAD_OUTPUT:
-                print(f"{model_name}.stl with ", end="")
-            model = trimesh.load(f"{models_dir}/{model_name}.stl", force="mesh")
-        elif os.path.exists(f"{models_dir}/{model_name}.off"):
-            if LOAD_OUTPUT:
-                print(f"{model_name}.off with ", end="")
-            model = trimesh.load(f"{models_dir}/{model_name}.off", force="mesh")
-        else:
-            print(f"{models_dir}/{model_name}")
-            raise Exception
+        if not filtered_path.exists():
+            raise FileNotFoundError(str(filtered_path))
+        model = trimesh.load(str(filtered_path), force="mesh")
     except:
         print_flushed(f"File {model_name} couldn't be loaded. Ensure it exists in the models directory.")
         comm.Abort(1)
     finally:
         if LOAD_OUTPUT:
             print_flushed(f"{model.vertices.shape[0]} vertices is found and loaded by process {comm.Get_rank()}!")
-        return np.array(model.vertices), model
+        return model.vertices, model
     
 counter = 0
     
@@ -42,7 +40,8 @@ def calculate_distance(results_dict, models_dir, fixed_model, model_name, comm, 
     print(model_name)
     print(counter)
     model, model_mesh = load_model_by_name(models_dir, model_name, comm)
-    model = align_model(fixed_model, model, fixed_model_mesh)
+    model = align_model(model, fixed_model, model_mesh)
+    print("MAX:", np.max(model))
     if METHOD == 'SCIPY_DH':
         results_dict[model_name], _, _ = max(directed_hausdorff(fixed_model, model),directed_hausdorff(model, fixed_model))
     elif METHOD == 'EB':

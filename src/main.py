@@ -1,6 +1,8 @@
+import json
 import random
 from utils import *
 import mpi4py
+from pathlib import Path
 
 mpi4py.rc(initialize=False, finalize=False)
 from mpi4py import MPI
@@ -23,13 +25,16 @@ class DynamicLoad(ClosestObjectSearch):
     
     def start(self):
         if self.rank == 0:
-            self.models = sorted([os.path.splitext(i)[0] for i in os.listdir(self.models_dir) 
-                                  if os.path.splitext(i)[1].lower() in {".stl", ".off"}])
+            models_path = Path(self.models_dir)
+            self.models = sorted(list(map(str, (list(models_path.glob("**/*.off")) + list(models_path.glob("**/*.stl"))))))
+            # self.models = sorted([os.path.splitext(i)[0] for i in os.listdir(self.models_dir) 
+            #                       if os.path.splitext(i)[1].lower() in {".stl", ".off"}])
             
             print_opening(self.world_size, len(self.models), self.fixed_model_name, "DLB")
-
-            if self.fixed_model_name in self.models:
-                self.models.pop(self.models.index(self.fixed_model_name))
+            filtered = list(filter(lambda x: self.fixed_model_name in x, self.models))[-1]
+            self.models.remove(filtered)
+            # if self.fixed_model_name in self.models:
+            #     self.models.pop(self.models.index(self.fixed_model_name))
 
             start = MPI.Wtime()
         else:
@@ -89,12 +94,16 @@ class StaticLoad(ClosestObjectSearch):
 
     def start(self):
         if self.rank == 0:
-            models = [os.path.splitext(i)[0] for i in os.listdir(self.models_dir) 
-                      if os.path.splitext(i)[1].lower() in {".stl", ".off"}]
+            models_path = Path(self.models_dir)
+            models = sorted(list(map(str, (list(models_path.glob("**/*.off")) + list(models_path.glob("**/*.stl"))))))
+            # models = [os.path.splitext(i)[0] for i in os.listdir(self.models_dir) 
+            #           if os.path.splitext(i)[1].lower() in {".stl", ".off"}]
             print_opening(self.world_size, len(models), self.fixed_model_name, "DS")
             
-            if self.fixed_model_name in models:
-                models.pop(models.index(self.fixed_model_name))
+            filtered = list(filter(lambda x: self.fixed_model_name in x, models))[-1]
+            models.remove(filtered)
+            # if self.fixed_model_name in models:
+            #     models.pop(models.index(self.fixed_model_name))
 
             splits = np.array(models, dtype=object)
             splits = np.array_split(splits, (self.world_size))
@@ -126,7 +135,9 @@ class StaticLoad(ClosestObjectSearch):
                 if len(i):
                     for k, v in i.items():
                         self.results_dict[k] = v
-            if len(self.results_dict):            
+            if len(self.results_dict):
+                with open("results.json", "w") as f:
+                    json.dump(dict(sorted(self.results_dict.items(), key=lambda x: x[1])), f, indent=2)
                 print_flushed(
                     f"Closest model to {self.fixed_model_name} is {min(self.results_dict, key=self.results_dict.get)}"
                 )
@@ -145,15 +156,15 @@ if __name__ == "__main__":
             
         else:
             if len(sys.argv) > 3:
-                if sys.argv[3] in os.listdir(f'{sys.argv[2]}'):
+                # if sys.argv[3] in os.listdir(f'{sys.argv[2]}'):
                     if sys.argv[1] in dynamic:
                         app = DynamicLoad(sys.argv[2], sys.argv[3], MPI)
                     elif sys.argv[1] in static:
                         app = StaticLoad(sys.argv[2], sys.argv[3], MPI)
                     app.start()
-                else:
-                    if MPI.COMM_WORLD.Get_rank() == 0:
-                        print_model_not_exists(sys.argv[2], sys.argv[3])
+                # else:
+                #     if MPI.COMM_WORLD.Get_rank() == 0:
+                #         print_model_not_exists(sys.argv[2], sys.argv[3])
             else:
                 if MPI.COMM_WORLD.Get_rank() == 0:
                     print_launch()
