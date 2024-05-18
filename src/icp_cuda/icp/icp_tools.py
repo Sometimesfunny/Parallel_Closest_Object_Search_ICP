@@ -57,7 +57,7 @@ def nearest_neighbor_split(source: np.ndarray, target: np.ndarray) -> Tuple[np.n
     
     return min_distances, indices
 
-@cuda.jit(device=True)
+@cuda.jit(device=True, fastmath=True, cache=True)
 def find_nearest_neighbor_cuda(point, dst, min_distance, min_index):
     min_distance[0] = math.inf
     min_index[0] = -1
@@ -70,7 +70,7 @@ def find_nearest_neighbor_cuda(point, dst, min_distance, min_index):
             min_distance[0] = distance
             min_index[0] = j
 
-@cuda.jit
+@cuda.jit(fastmath=True, cache=True)
 def find_nearest_neighbors_kernel_cuda(src, dst, min_distances, indices):
     i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
     if i >= src.shape[0]:

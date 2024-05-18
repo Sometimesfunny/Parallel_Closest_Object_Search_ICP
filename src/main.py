@@ -27,8 +27,6 @@ class DynamicLoad(ClosestObjectSearch):
         if self.rank == 0:
             models_path = Path(self.models_dir)
             self.models = sorted(list(map(str, (list(models_path.glob("**/*.off")) + list(models_path.glob("**/*.stl"))))))
-            # self.models = sorted([os.path.splitext(i)[0] for i in os.listdir(self.models_dir) 
-            #                       if os.path.splitext(i)[1].lower() in {".stl", ".off"}])
             
             print_opening(self.world_size, len(self.models), self.fixed_model_name, "DLB")
             filtered = list(filter(lambda x: self.fixed_model_name in x, self.models))[-1]
